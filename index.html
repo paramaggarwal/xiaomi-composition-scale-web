@@ -1,76 +1,68 @@
 <html>
   <body>
     <div id="info"></div>
-    <button onClick="onButtonMeasure()">measure</button>
-    <button title="start" onClick="onButtonTest()">test</button>
+    <button onClick="onButtonMeasure()">start</button>
+
     <script>
-      function onButtonTest(){
-        // data received here https://googlechrome.github.io/samples/web-bluetooth/notifications.html
-        notifications =[
-          new Uint8Array([0x02, 0x04, 0xb2, 0x07, 0x01, 0x01, 0x05, 0x01, 0x20, 0x00, 0x00, 0xf8, 0x39]),
-          new Uint8Array([0x02, 0x04, 0xb2, 0x07, 0x01, 0x01, 0x05, 0x01, 0x20, 0x00, 0x00, 0xf8, 0x39]),
-          new Uint8Array([0x02, 0x04, 0xb2, 0x07, 0x01, 0x01, 0x05, 0x01, 0x20, 0x00, 0x00, 0xf8, 0x39]),
-          new Uint8Array([0x02, 0x04, 0xb2, 0x07, 0x01, 0x01, 0x05, 0x01, 0x20, 0x00, 0x00, 0xf8, 0x39]),
-          new Uint8Array([0x02, 0x04, 0xb2, 0x07, 0x01, 0x01, 0x05, 0x01, 0x21, 0x00, 0x00, 0xf8, 0x39]),
-          new Uint8Array([0x02, 0x24, 0xb2, 0x07, 0x01, 0x01, 0x05, 0x01, 0x22, 0xfe, 0xff, 0xf8, 0x39]),
-          new Uint8Array([0x02, 0x26, 0xb2, 0x07, 0x01, 0x01, 0x05, 0x01, 0x22, 0xd0, 0x01, 0xf8, 0x39]),
-          new Uint8Array([0x02, 0xa6, 0xb2, 0x07, 0x01, 0x01, 0x05, 0x01, 0x22, 0xd0, 0x01, 0xf8, 0x39])
-        ]
-
-        notifications.forEach(function(notification){
-          data_view = new DataView(notification.buffer)
-          handleNotifications({target: {value: data_view}})
-        })
-      }
-
       function onButtonMeasure() {
         let serviceUuid = "body_composition";
         let characteristicUuid = "body_composition_measurement";
 
-        console.log('Requesting Bluetooth Device...');
-        navigator.bluetooth.requestDevice({filters: [{services: [serviceUuid]}]})
-          .then(device => {
-            console.log('Connecting to GATT Server...');
+        console.log("Requesting Bluetooth Device...");
+        navigator.bluetooth
+          .requestDevice({ filters: [{ services: [serviceUuid] }] })
+          .then((device) => {
+            console.log("Connecting to GATT Server...");
             return device.gatt.connect();
           })
-          .then(server => {
-            console.log('Getting Service...');
+          .then((server) => {
+            console.log("Getting Service...");
             return server.getPrimaryService(serviceUuid);
           })
-          .then(service => {
-            console.log('Getting Characteristic...');
+          .then((service) => {
+            console.log("Getting Characteristic...");
             return service.getCharacteristic(characteristicUuid);
           })
-          .then(characteristic => {
+          .then((characteristic) => {
             myCharacteristic = characteristic;
-            return myCharacteristic.startNotifications().then(_ => {
-              console.log('> Notifications started');
-              myCharacteristic.addEventListener('characteristicvaluechanged',
-                handleNotifications);
+            return myCharacteristic.startNotifications().then((_) => {
+              console.log("> Notifications started");
+              myCharacteristic.addEventListener(
+                "characteristicvaluechanged",
+                handleNotifications
+              );
             });
           })
-          .catch(error => {
-            console.log('Argh! ' + error);
+          .catch((error) => {
+            console.log("Argh! " + error);
           });
       }
+
       function handleNotifications(event) {
         let value = event.target.value;
-        let flags = value.getUint16(0, true)
-        let weight_data = value.getUint16(11, true)
+        let flags = value.getUint16(0, true);
+        let weight_data = value.getUint16(11, true);
         // Unit is in kilograms with resolution 0.005. according to specs
-        let weight = weight_data * 0.005
+        let weight = weight_data * 0.005;
 
-        let info = document.getElementById("info")
+        let info = document.getElementById("info");
         info.innerHTML = weight.toFixed(3) + " kg";
 
-        if (flags == 0xa602){
-          let impedance = value.getUint16(9, true) // * 0.1;
+        if (flags == 0xa602) {
+          let impedance = value.getUint16(9, true); // * 0.1;
           //it looks like xiaomi does not follow the specs for impedance value resolution
           info.innerHTML += "<br> impedance: " + impedance.toFixed(2) + " Om";
-          let total_body_water = 6.53 + 0.3674*((179**2)/impedance) + 0.1753*weight - 0.11*31;
-          let fat_free_mass = 0.51*((179**2)/impedance) + 0.33*weight   + 3.66;
-          info.innerHTML += "<br> total body water: " + total_body_water.toFixed(2) + " kg";
-          info.innerHTML += "<br> fat free mass: " + fat_free_mass.toFixed(2) + " kg";
+          let total_body_water =
+            6.53 +
+            0.3674 * (179 ** 2 / impedance) +
+            0.1753 * weight -
+            0.11 * 31;
+          let fat_free_mass =
+            0.51 * (179 ** 2 / impedance) + 0.33 * weight + 3.66;
+          info.innerHTML +=
+            "<br> total body water: " + total_body_water.toFixed(2) + " kg";
+          info.innerHTML +=
+            "<br> fat free mass: " + fat_free_mass.toFixed(2) + " kg";
         }
       }
     </script>
